@@ -1,4 +1,4 @@
-package cg.game;
+package cg;
 
 /** @author Rajarshi Chattopadhyay
 * Squares.java: This program draws concentric squares rotated by 45 degrees to one another.
