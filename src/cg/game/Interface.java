@@ -14,7 +14,7 @@ public class Interface extends Frame {
 	}
 
 	Interface() {
-		super("Tetris: Intrerface for Tetris game");
+		super("Tetris Game");
 		addWindowListener(new WindowAdapter() {
 			public void windowClosing(WindowEvent e) {
 				System.exit(0);
@@ -24,10 +24,12 @@ public class Interface extends Frame {
 		add("Center", new InterfaceCanvas());
 		setVisible(true);
 	}
+
 }
 
 @SuppressWarnings("serial")
-class InterfaceCanvas extends Canvas {
+class InterfaceCanvas extends Canvas // implements MouseListener, MouseMotionListener
+{
 	int maxX, maxY;
 	int centerX, centerY;
 	int cx, cy;
@@ -35,10 +37,37 @@ class InterfaceCanvas extends Canvas {
 	int level = 1;
 	int lines = 0;
 	int score = 0;
-	int[][] mainlayer = new int[10][20];
-	Color[][] layerColor = new Color[10][20];
-	Shape current;
-	Shape next;
+	boolean hover = false;
+
+	InterfaceCanvas() {
+		addMouseMotionListener(new MouseAdapter() {
+			@Override
+			public void mouseMoved(MouseEvent e) {
+				float mouseX = (e.getX() - centerX) * pixelSize;
+				float mouseY = (centerY - e.getY()) * pixelSize;
+
+				if (mouseX > -250 && mouseX < 0 && mouseY > -250 && mouseY < 250) {
+					hover = true;
+					repaint();
+				} else {
+					hover = false;
+					repaint();
+				}
+			}
+		});
+		addMouseListener(new MouseAdapter() {
+			public void mousePressed(MouseEvent e) {
+				// System.exit(1);
+				float mouseX = (e.getX() - centerX) * pixelSize;
+				float mouseY = (centerY - e.getY()) * pixelSize;
+
+				if (mouseX > 50 && mouseX < 150 && mouseY > -250 && mouseY < -210) {
+					System.exit(1);
+
+				}
+			}
+		});
+	}
 
 	int iX(float x) {
 		return Math.round(centerX + x / pixelSize);
@@ -75,55 +104,106 @@ class InterfaceCanvas extends Canvas {
 		g.drawString("QUIT", iX(75), iY(-235));
 	}
 
+	void mainlayer(Graphics g, int x, int y, Color c) {
+		x = iX(-100 + 25 * x + 25);
+		y = iY(-225 + 25 * y + 25);
+		g.setColor(c);
+		g.fillRect(x, y, Math.round(25 / pixelSize), Math.round(25 / pixelSize));
+		g.setColor(Color.BLACK);
+		g.drawRect(x, y, Math.round(25 / pixelSize), Math.round(25 / pixelSize));
+	}
+
+	void nextlayer(Graphics g, int x, int y, Color c) {
+		x = iX(170 - 25 * 2 + 25 * x);
+		y = iY(250 - 25 + 25 * y);
+		g.setColor(c);
+		g.fillRect(x, y, Math.round(25 / pixelSize), Math.round(25 / pixelSize));
+		g.setColor(Color.BLACK);
+		g.drawRect(x, y, Math.round(25 / pixelSize), Math.round(25 / pixelSize));
+	}
+
+	void currentlayer(Graphics g, int x, int y, Color c) {
+		x = iX(-125 + 25 * x);
+		y = iY(125 + 25 * y + 25);
+		g.setColor(c);
+		g.fillRect(x, y, Math.round(25 / pixelSize), Math.round(25 / pixelSize));
+		g.setColor(Color.BLACK);
+		g.drawRect(x, y, Math.round(25 / pixelSize), Math.round(25 / pixelSize));
+	}
+
 	void fillmain(Graphics g) {
-		for (int x = 0; x < 10; x++) {
-			for (int y = 0; y < 20; y++) {
-				if (mainlayer[x][y] == 1) {
-					x = iX(-250 + 25 * (x + 1) - 25);
-					y = iY(-250 + 25 * (y + 1));
-					g.setColor(layerColor[x][y]);
-					g.fillRect(x + 1, y + 1, Math.round(25 / pixelSize), Math.round(25 / pixelSize));
-					g.setColor(Color.black);
-					g.drawRect(x + 1, y + 1, Math.round(25 / pixelSize), Math.round(25 / pixelSize));
-				}
-
-			}
-		}
+		int x = -1;
+		int y = -1;
+		mainlayer(g, x, y, Color.YELLOW);
+		x = 0;
+		y = -1;
+		mainlayer(g, x, y, Color.YELLOW);
+		x = 0;
+		y = 0;
+		mainlayer(g, x, y, Color.YELLOW);
+		x = 1;
+		y = 0;
+		mainlayer(g, x, y, Color.YELLOW);
+		x = 1;
+		y = -1;
+		mainlayer(g, x, y, Color.BLUE);
+		x = 2;
+		y = -1;
+		mainlayer(g, x, y, Color.BLUE);
+		x = 2;
+		y = 0;
+		mainlayer(g, x, y, Color.BLUE);
+		x = 2;
+		y = 1;
+		mainlayer(g, x, y, Color.BLUE);
 	}
 
-	public void fillnext(Graphics g) {
-		for (int i = 0; i < 4; ++i) {
-			int x = next.x(i);
-			int y = next.y(i);
-			x = iX(160 - 25 * 2 + 25 * x);
-			y = iY(240 - 25 + 25 * y);
-			g.setColor(Color.RED);
-			g.fillRect(x, y, Math.round(25 / pixelSize), Math.round(25 / pixelSize));
-			g.setColor(Color.BLACK);
-			g.drawRect(x, y, Math.round(25 / pixelSize), Math.round(25 / pixelSize));
-		}
-
+	void fillnext(Graphics g) {
+		int x = -1;
+		int y = -1;
+		nextlayer(g, x, y, Color.RED);
+		x = 0;
+		y = -1;
+		nextlayer(g, x, y, Color.RED);
+		x = 1;
+		y = -1;
+		nextlayer(g, x, y, Color.RED);
+		x = 1;
+		y = 0;
+		nextlayer(g, x, y, Color.RED);
 	}
 
-	public void fillcurrent(Graphics g) {
-		for (int i = 0; i < 4; ++i) {
-			int x = cx + current.x(i);
-			int y = cy + current.y(i);
-			x = iX(-250 + 25 * x - 25);
-			y = iY(-250 + 25 * y);
-			g.setColor(Color.GREEN);
-			g.fillRect(x + 1, y + 1, Math.round(25 / pixelSize), Math.round(25 / pixelSize));
-			g.setColor(Color.BLACK);
-			g.drawRect(x + 1, y + 1, Math.round(25 / pixelSize), Math.round(25 / pixelSize));
-		
-		}
+	void fillcurrent(Graphics g) {
+		int x = -1;
+		int y = -1;
+		currentlayer(g, x, y, Color.GREEN);
+		x = -1;
+		y = 0;
+		currentlayer(g, x, y, Color.GREEN);
+		x = 0;
+		y = -1;
+		currentlayer(g, x, y, Color.GREEN);
+		x = 0;
+		y = 0;
+		currentlayer(g, x, y, Color.GREEN);
 
 	}
 
 	public void paint(Graphics g) {
 
 		initgr();
-		baselayer(g);
+		drawbaselayer(g);
+		fillnext(g);
+		fillcurrent(g);
+		fillmain(g);
+
+		if (hover) {
+			g.setColor(Color.blue);
+			g.drawRect(iX(-125 - 60), iY(25), Math.round(120 / pixelSize), Math.round(50 / pixelSize));
+			g.drawString("PAUSE", iX(-160), iY(-5));
+			repaint();
+		}
 
 	}
+
 }
