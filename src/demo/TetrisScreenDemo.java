@@ -1,19 +1,15 @@
-package cg;
-
-/** @author Rajarshi Chattopadhyay
-* Squares.java: This program draws concentric squares rotated by 45 degrees to one another.
-*/
+package demo;
 
 import java.awt.*;
 import java.awt.event.*;
 
 @SuppressWarnings("serial")
-public class Interface extends Frame {
+public class TetrisScreenDemo extends Frame {
 	public static void main(String[] args) {
-		new Interface();
+		new TetrisScreenDemo();
 	}
 
-	Interface() {
+	TetrisScreenDemo() {
 		super("Tetris Game");
 		addWindowListener(new WindowAdapter() {
 			public void windowClosing(WindowEvent e) {
