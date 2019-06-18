@@ -5,6 +5,8 @@ import java.awt.event.*;
 import javax.swing.*;
 
 public class Layer extends Canvas implements ActionListener {
+
+	private static final long serialVersionUID = 1L;
 	TetrisShape current;
 	TetrisShape next;
 	int[][] mainlayer = new int[10][20];

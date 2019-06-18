@@ -1,9 +1,6 @@
 package tetris;
 
 import java.awt.Color;
-import java.util.Random;
-
-
 
 public class TetrisShape {
 
@@ -35,7 +32,7 @@ public class TetrisShape {
             
   
         };
-//Here we put one row of the coordiate values from the coordsTable to a coords array of a tetris piece. 
+//Here we put one row of the coordinate values from the coordsTable to a coords array of a tetris piece. 
         for (int i = 0; i < 4 ; i++) {
             for (int j = 0; j < 2; ++j) {
                 axis[i][j] = shapeTable[shape.ordinal()][i][j];
