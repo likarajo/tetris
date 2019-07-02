@@ -2,14 +2,15 @@ package tetris;
 
 import java.awt.*;
 import java.awt.event.*;
+
 import javax.swing.*;
 
 public class TetrisCanvas extends Canvas implements ActionListener {
 
 	private static final long serialVersionUID = 1L; // Since serializabile
-	
+
 	// Speed of drop in Milliseconds
-	private static final int SPEED = 1000;
+	private static int SPEED = 1000;
 
 	// Starting position of shapes in play area
 	private static final int INITX = 5;
@@ -29,6 +30,7 @@ public class TetrisCanvas extends Canvas implements ActionListener {
 
 	int level = 1;
 	int lines = 0;
+	int linesCurr = 0;
 	int score = 0;
 
 	boolean hover = false;
@@ -37,6 +39,20 @@ public class TetrisCanvas extends Canvas implements ActionListener {
 
 	Timer timer = null;
 	GameThread thread;
+
+	int numLinesRemoved = 0;
+
+	// scoring factor (range: 1-10)
+	// int[] M = IntStream.rangeClosed(1, 10).toArray();
+	int M = 1;
+
+	// number of rows required for each Level of difficulty (range: 20-50)
+	// int[] N = IntStream.rangeClosed(20, 50).toArray();
+	int N = 20;
+
+	// speed factor (range: 0.1-1.0)
+	// int[] S = IntStream.rangeClosed(1, 10).toArray();
+	float S = 0.1F;
 
 	// ************** Constructor ****************
 	TetrisCanvas() {
@@ -275,26 +291,33 @@ public class TetrisCanvas extends Canvas implements ActionListener {
 	}
 
 	private void removeFullLines() {
-		int fullLines = 0;
+		int numFullLines = 0;
 		for (int i = playAreaBlock[0].length - 1; i >= 0; i--) {
-			boolean isLineFull = true;
+			boolean lineIsFull = true;
 			for (int j = 0; j < playAreaBlock.length; j++) {
 				if (playAreaBlock[j][i] == 0) {
-					isLineFull = false;
+					lineIsFull = false;
 				}
 			}
-			if (isLineFull) {
-				fullLines++;
+			if (lineIsFull) {
+				numFullLines++;
 				for (int j = 0; j < playAreaBlock.length; j++) {
 					for (int k = i; k < playAreaBlock[0].length - 1; k++) {
+						// board[(k * BoardWidth) + j] = shapeAt(j, k + 1);
 						playAreaBlock[j][k] = playAreaBlock[j][k + 1];
 						playAreaColor[j][k] = playAreaColor[j][k + 1];
 					}
 				}
 			}
 		}
-		if (fullLines > 0) {
-			lines += fullLines;
+		if (numFullLines > 0) {
+			lines += numFullLines;
+			linesCurr += numFullLines;
+			score = score + (level * M);
+			if (linesCurr >= N) {
+				level += 1;
+				SPEED = (int) (SPEED * (1 + (level * S)));
+			}
 		}
 	}
 
