@@ -1,122 +1,66 @@
 package tetris;
 
 import java.awt.Color;
+import java.util.*;
 
-public class Shapes {
+/**
+ * Class for Shapes
+ */
+class Shapes {
 
-	enum AllShapes {
-		Square, Line, Z, S, J, L, T 
-	};
+	Shape type;
+	Color color;
+	int[] pt;
+	boolean[][] pos;
 
-	private AllShapes currShape;
-	private int shapeMatrix[][];
-	private int[][][] shapeTable;
+	static Set<Shape> unusedShapes = new HashSet<>(Arrays.asList(Shape.Shape_N1, Shape.Shape_N2, Shape.Shape_N3,
+			Shape.Shape_N4, Shape.Shape_N5, Shape.Shape_N6, Shape.Shape_N7, Shape.Shape_N8));
 
-	public Shapes() {
-		shapeMatrix = new int[4][2];
-		setShape(AllShapes.S); // default
+	Shapes() {
+		do {
+			type = Shape.getRandomShape();
+		} while (unusedShapes.contains(type));
+		pos = type.getInitPos();
+		pt = type.getInitPt();
+		color = type.getColor();
 	}
 
-	public void setShape(AllShapes shape) {
-		shapeTable = new int[][][] {
-				{ { -1, -1 }, { -1, 0 }, { 0, -1 }, { 0, 0 } }, 	// Square
-				{ { -1, -1 }, { 0, -1 }, { 1, -1 }, { 2, -1 } },	// Line
-				{ { -1, 0 }, { 0, 0 }, { 0, -1 }, { 1, -1 } },		// Z
-				{ { -1, -1 }, { 0, -1 }, { 0, 0 }, { 1, 0 } },		// S
-				{ { -1, -1 }, { -1, 0 }, { 0, -1 }, { 1, -1 } },	// J 
-				{ { -1, -1 }, { 0, -1 }, { 1, -1 }, { 1, 0 } },		// L	
-				{ { -1, -1 }, { 0, -1 }, { 1, -1 }, { 0, 0 } } 		// T				
-		}; 
-		for (int i = 0; i < 4; i++) {
-			for (int j = 0; j < 2; ++j) {
-				shapeMatrix[i][j] = shapeTable[shape.ordinal()][i][j];
-			}
-		}	
-		currShape = shape;
+	public int[] getPt() {
+		return Arrays.copyOf(pt, pt.length);
 	}
 
-	public void setX(int k, int x) {
-		shapeMatrix[k][0] = x;
+	public void setPt(int[] pt) {
+		this.pt = pt;
 	}
 
-	public void setY(int k, int y) {
-		shapeMatrix[k][1] = y;
+	public boolean[][] getPos() {
+		boolean[][] res = new boolean[pos.length][];
+		for (int i = 0; i < pos.length; i++)
+			res[i] = Arrays.copyOf(pos[i], pos[i].length);
+		return res;
 	}
 
-	public int getX(int k) {
-		return shapeMatrix[k][0];
+	public void setPos(boolean[][] pos) {
+		this.pos = pos;
 	}
 
-	public int getY(int k) {
-		return shapeMatrix[k][1];
-	}
-
-	public AllShapes getShape() {
-		return currShape;
-	}
-
-	public void selectRandom() {
-
-		int x = (int) (50 * Math.random() % 6) + 1;
-		AllShapes[] values = AllShapes.values();
-		setShape(values[x]);
-	}
-
-	public Shapes rotateCCW() {
-		if (currShape == AllShapes.Square)
-			return this;
-
-		Shapes result = new Shapes();
-		result.currShape = currShape;
-
-		for (int i = 0; i < 4; ++i) {
-			result.setX(i, 1 + getY(i));
-			result.setY(i, -1 - getX(i));
+	public static int[][] getNextPos(int[] pt, boolean[][] pos) {
+		int[][] np = new int[4][2];
+		int idx = 0;
+		for (int i = 0; i < pos.length; i++) {
+			for (int j = 0; j < pos[i].length; j++)
+				if (pos[i][j]) {
+					np[idx][0] = j + pt[0];
+					np[idx++][1] = i + pt[1];
+				}
 		}
-		return result;
+		int[][] res = new int[idx][2];
+		for (int i = 0; i < idx; i++)
+			res[i] = np[i];
+		return res;
 	}
 
-	public Shapes rotateCW() {
-		if (currShape == AllShapes.Square)
-			return this;
-
-		Shapes result = new Shapes();
-		result.currShape = currShape;
-
-		for (int i = 0; i < 4; ++i) {
-			result.setX(i, -1 - getY(i));
-			result.setY(i, getX(i) - 1);
-		}
-		return result;
-	}
-
-	public Color getColor() {
-		Color color;
-		switch (currShape.name()) {
-		case "Square":
-			color = Color.green;
-			break;
-		case "Line":
-			color = Color.cyan;
-			break;
-		case "Z":
-			color = new Color(102,0,204);
-			break;
-		case "S":
-			color = Color.yellow;
-			break;
-		case "J":
-			color = Color.blue;
-			break;
-		case "L":
-			color = Color.red;
-			break;
-		case "T":
-			color = Color.orange;
-			break;
-		default:
-			color = Color.white;
-		}
-		return color;
+	public int[][] getBlockPos() {
+		return getNextPos(pt, pos);
 	}
 }

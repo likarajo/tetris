@@ -1,103 +1,63 @@
 package tetris;
 
-import java.awt.*;
-import java.awt.event.*;
+import java.awt.Canvas;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
+import java.awt.event.MouseWheelEvent;
+import java.util.ArrayList;
+import java.util.List;
 
-import javax.swing.*;
+class TetrisCanvas extends Canvas {
 
-public class TetrisCanvas extends Canvas implements ActionListener {
+	private static final long serialVersionUID = 1L;
+	
+	int originX = 0, originY = 0;
+	float pixelSize, rWidth, rHeight, blockSize, margin;
+	Font textFont;
+	Component mainArea, nextShapeArea, scoreArea, setupButton, quitButton, pauseLabel;
+	List<Component> currShapeBlocks = new ArrayList<>();
+	boolean changeShape = false;
 
-	private static final long serialVersionUID = 1L; // Since serializabile
-
-	// Speed of drop in Milliseconds
-	private static int SPEED = 1000;
-
-	// Starting position of shapes in play area
-	private static final int INITX = 5;
-	private static final int INITY = 20;
-
-	Shapes currentShape;
-	Shapes nextShape;
-
-	int[][] playAreaBlock = new int[10][20];
-	Color[][] playAreaColor = new Color[10][20];
-
-	int centerX, centerY;
-	float pixelSize, rWidth = 600, rHeight = 600;
-
-	// current position of shapes in play area
-	int currX, currY;
-
-	int level = 1;
-	int lines = 0;
-	int linesCurr = 0;
-	int score = 0;
-
-	boolean hover = false;
-
-	boolean touchBase = false;
-
-	Timer timer = null;
-	GameThread thread;
-
-	int numLinesRemoved = 0;
-
-	// scoring factor (range: 1-10)
-	// int[] M = IntStream.rangeClosed(1, 10).toArray();
-	int M = 1;
-
-	// number of rows required for each Level of difficulty (range: 20-50)
-	// int[] N = IntStream.rangeClosed(20, 50).toArray();
-	int N = 20;
-
-	// speed factor (range: 0.1-1.0)
-	// int[] S = IntStream.rangeClosed(1, 10).toArray();
-	float S = 0.1F;
-
-	// ************** Constructor ****************
 	TetrisCanvas() {
-
-		addMouseMotionListener(new MouseAdapter() {
-			@Override
-			public void mouseMoved(MouseEvent e) {
-				boolean dispPause = hover;
-				float mouseX = (e.getX() - centerX) * pixelSize;
-				float mouseY = (centerY - e.getY()) * pixelSize;
-				if (mouseX > -250 && mouseX < 0 && mouseY > -250 && mouseY < 250) {
-					hover = true;
-					thread.stop();
-				} else {
-					hover = false;
-					thread.start();
-				}
-				if (dispPause != hover)
-					repaint();
-
-			}
-		});
+		mainArea = new Component();
+		nextShapeArea = new Component();
+		scoreArea = new Component();
+		setupButton = new Component();
+		quitButton = new Component();
+		pauseLabel = new Component();
+		pauseLabel.hidden = true;
 
 		addMouseListener(new MouseAdapter() {
 			@Override
-			public void mousePressed(MouseEvent e) {
-				float mouseX = (e.getX() - centerX) * pixelSize;
-				float mouseY = (centerY - e.getY()) * pixelSize;
-				if (mouseX > 50 && mouseX < 150 && mouseY > -250 && mouseY < -210) {
-					System.exit(1);
-				}
-			}
-
-			@Override
 			public void mouseClicked(MouseEvent e) {
-				if (!hover) {
-					if (SwingUtilities.isLeftMouseButton(e)) {
-						if (moveRight())
-							currX--;
-					} else if (SwingUtilities.isRightMouseButton(e)) {
-						if (moveLeft())
-							currX++;
+				super.mouseClicked(e);
+				if (e.getButton() == MouseEvent.BUTTON1) {
+					// On left click
+					if (quitButton.inside(fX(e.getX()), fY(e.getY())) && quitButton != null) {
+						// Clicked on Quit button
+						System.exit(0);
+					} else if (setupButton.inside(fX(e.getX()), fY(e.getY())) && setupButton != null) {
+						// Clicked on Setup button
+						Tetris.getInstance().handleTimer(true); // suspend timer
+						Tetris.getInstance().setup(); // display setup window
+					} else if (Tetris.getInstance().isGamePlaying && !Tetris.getInstance().isGamePaused) {
+						// Game is playing and Not Paused
+						Tetris.getInstance().moveOrChange(Action.MoveLeft); // move shape left
+						repaint();
 					}
-					repaint();
-
+				} else if (e.getButton() == MouseEvent.BUTTON3) {
+					// On right click
+					if (Tetris.getInstance().isGamePlaying && !Tetris.getInstance().isGamePaused) {
+						// Game is playing and Not Paused
+						Tetris.getInstance().moveOrChange(Action.MoveRight); // move shape right
+						repaint();
+					}
 				}
 			}
 		});
@@ -105,238 +65,246 @@ public class TetrisCanvas extends Canvas implements ActionListener {
 		addMouseWheelListener(new MouseAdapter() {
 			@Override
 			public void mouseWheelMoved(MouseWheelEvent e) {
-				if (!hover) {
-					if (e.getWheelRotation() > 0) {
-						if (canRotate(1))
-							currentShape = currentShape.rotateCW();
-					}
-					if (e.getWheelRotation() < 0) {
-						if (canRotate(0))
-							currentShape = currentShape.rotateCCW();
-					}
-					repaint();
+				super.mouseWheelMoved(e);
+				if (!Tetris.getInstance().isGamePlaying)
+					// Game is Not playing
+					return;
+				if (Tetris.getInstance().isGamePaused)
+					// Game is paused
+					return;
+
+				if (e.getWheelRotation() < 0) {
+					// Mouse wheel UP
+					if (Tetris.getInstance().moveOrChange(Action.RotateLeft))
+						repaint();
+
+				} else {
+					// Mouse wheel DOWN
+					if (Tetris.getInstance().moveOrChange(Action.RotateRight))
+						repaint();
 				}
 			}
 		});
 
-		currX = INITX;
-		currY = INITY;
-		thread = new GameThread(timer);
-		thread.timer = new Timer(SPEED, this);
-		thread.start();
+		addMouseMotionListener(new MouseMotionAdapter() {
+			@Override
+			public void mouseMoved(MouseEvent e) {
+				super.mouseMoved(e);
+				if (!Tetris.getInstance().isGamePlaying)
+					// Game is Not playing
+					return;
+
+				// Display or hide Pause label
+				boolean displayPause = mainArea.inside(fX(e.getX()), fY(e.getY()));
+				if (displayPause == pauseLabel.hidden) {
+					pauseLabel.hidden = !displayPause;
+					Tetris.getInstance().handleTimer(displayPause);
+					repaint();
+				}
+
+				// Keep or change Current shape
+				boolean shapeSet = true;
+				for (Component block : currShapeBlocks) {
+					if (block.inside(fX(e.getX()), fY(e.getY()))) {
+						shapeSet = false;
+						if (!changeShape) {
+							if (Tetris.getInstance().moveOrChange(Action.Change))
+								repaint();
+							changeShape = true;
+							break;
+						}
+					}
+				}
+				if (shapeSet)
+					changeShape = false;
+
+			}
+		});
 	}
-	// ***** End of Constructor *******
+
+	void initgr() {
+		Dimension d = getSize();
+		int maxX = d.width - 1, maxY = d.height - 1;
+		rWidth = (float) Tetris.BLOCKSIZE * (Tetris.MAINAREA_WIDTH + 5) + 3 * 10;
+		rHeight = (float) Tetris.BLOCKSIZE * Tetris.MAINAREA_HEIGHT + 10 * 2;
+		margin = fL(10);
+		pixelSize = Math.max(rWidth / maxX, rHeight / maxY);
+		blockSize = fL(Tetris.BLOCKSIZE);
+		textFont = new Font("Helvetica", Font.BOLD, iL(16 / pixelSize));
+	}
 
 	int iX(float x) {
-		return Math.round(centerX + x / pixelSize);
+		return Math.round(originX + x / pixelSize);
 	}
 
 	int iY(float y) {
-		return Math.round(centerY - y / pixelSize);
+		return Math.round(originY + y / pixelSize);
 	}
 
-	void start() {
-		currentShape = new Shapes();
-		currentShape.selectRandom();
-
-		nextShape = new Shapes();
-		nextShape.selectRandom();
-
-		thread.start();
+	int iL(float l) {
+		return Math.round(l / pixelSize);
 	}
 
-	void initgr(Graphics g) {
-		Dimension d = getSize();
-		int maxX = d.width - 1, maxY = d.height - 1;
-		pixelSize = Math.max(rWidth / maxX, rHeight / maxY);
-		centerX = maxX / 2;
-		centerY = maxY / 2;
-
-		// Draw playing area
-		g.drawRect(iX(-250), iY(250), Math.round(250 / pixelSize), Math.round(500 / pixelSize));
-
-		// Draw nextShape area
-		g.drawRect(iX(50), iY(250), Math.round(170 / pixelSize), Math.round(100 / pixelSize));
-
-		// Draw QUIT button
-		g.drawRect(iX(50), iY(-210), Math.round(100 / pixelSize), Math.round(40 / pixelSize));
-
-		// strings
-		g.setFont(new Font("Helvetica", Font.BOLD, (int) (20 / pixelSize)));
-		g.drawString("Level:                        " + level, iX(50), iY(50));
-		g.drawString("Lines:                        " + lines, iX(50), iY(0));
-		g.drawString("Score:                       " + score, iX(50), iY(-50));
-		g.drawString("QUIT", iX(75), iY(-235));
+	float fX(int x) {
+		return (x - originX) * pixelSize;
 	}
 
-	void drawPlayArea(Graphics g, int x, int y, Color c) {
-		x = iX(-250 + 25 * x - 25);
-		y = iY(-250 + 25 * y);
-		g.setColor(c);
-		g.fillRect(x, y, Math.round(25 / pixelSize), Math.round(25 / pixelSize));
-		g.setColor(Color.black);
-		g.drawRect(x, y, Math.round(25 / pixelSize), Math.round(25 / pixelSize));
+	float fY(int y) {
+		return (y - originY) * pixelSize;
 	}
 
-	void drawNextArea(Graphics g, int x, int y, Color c) {
-		x = iX(170 - 25 * 2 + 25 * x);
-		y = iY(250 - 25 + 25 * y);
-		g.setColor(c);
-		g.fillRect(x, y, Math.round(25 / pixelSize), Math.round(25 / pixelSize));
-		g.setColor(Color.BLACK);
-		g.drawRect(x, y, Math.round(25 / pixelSize), Math.round(25 / pixelSize));
+	float fL(int L) {
+		return (float) L;
 	}
 
-	boolean moveLeft() {
-		for (int i = 0; i < 4; ++i) {
-			int x = currX + currentShape.getX(i);
-			int y = currY + currentShape.getY(i);
-			if (x == 10 || playAreaBlock[x][y - 1] == 1 || y == 1 || playAreaBlock[x - 1][y - 2] == 1)
-				return false;
-		}
-		return true;
-	}
-
-	boolean moveRight() {
-		for (int i = 0; i < 4; ++i) {
-			int x = currX + currentShape.getX(i);
-			int y = currY + currentShape.getY(i);
-			if (x == 1 || playAreaBlock[x - 2][y - 1] == 1 || y == 1 || playAreaBlock[x - 1][y - 2] == 1)
-				return false;
-		}
-		return true;
-	}
-
-	public void addShape() {
-		for (int i = 0; i < 4; ++i) {
-			int x = currX + currentShape.getX(i);
-			int y = currY + currentShape.getY(i);
-			playAreaBlock[x - 1][y - 1] = 1;
-			playAreaColor[x - 1][y - 1] = currentShape.getColor();
-		}
-	}
-
-	@Override
-	public void actionPerformed(ActionEvent e) {
-		if (touchBase) {
-			touchBase = false;
-			currentShape = nextShape;
-			currX = INITX;
-			currY = INITY;
-			nextShape = new Shapes();
-			nextShape.selectRandom();
-		} else {
-			currY--;
-		}
-		repaint();
-	}
-
-	public void fillPlayArea(Graphics g) {
-		for (int x = 0; x < 10; x++) {
-			for (int y = 0; y < 20; y++) {
-				if (playAreaBlock[x][y] == 1)
-					drawPlayArea(g, x + 1, y + 1, playAreaColor[x][y]);
+	void drawComponent(Graphics g, Component c) {
+		if (!c.hidden) {
+			if (c.fillColor != null) {
+				g.setColor(c.fillColor);
+				g.fillRect(iX(c.x), iY(c.y), iL(c.w), iL(c.h));
+			}
+			if (c.borderColor != null) {
+				g.setColor(c.borderColor);
+				g.drawRect(iX(c.x), iY(c.y), iL(c.w), iL(c.h));
+			}
+			if (c.text != null) {
+				FontMetrics metrics = g.getFontMetrics(g.getFont());
+				float x = c.x + (c.w - metrics.stringWidth(c.text)) / 2;
+				float y = c.y + ((c.h - metrics.getHeight()) / 2) + metrics.getAscent();
+				g.drawString(c.text, iX(x), iY(y));
 			}
 		}
+		for (Component sc : c.subComponents)
+			drawComponent(g, sc);
 	}
 
-	public void fillNextArea(Graphics g) {
-		for (int i = 0; i < 4; ++i) {
-			int x = nextShape.getX(i);
-			int y = nextShape.getY(i);
-			drawNextArea(g, x, y, nextShape.getColor());
-		}
-	}
+	void drawMainArea(Graphics g) {
 
-	public void fillWithShapes(Graphics g) {
-		for (int i = 0; i < 4; ++i) {
-			int x = currX + currentShape.getX(i);
-			int y = currY + currentShape.getY(i);
-			drawPlayArea(g, x, y, currentShape.getColor());
-		}
-	}
+		mainArea.x = margin;
+		mainArea.y = margin;
+		mainArea.w = Tetris.MAINAREA_WIDTH * blockSize;
+		mainArea.h = Tetris.MAINAREA_HEIGHT * blockSize;
+		mainArea.subComponents.clear();
 
-	public boolean canRotate(int rot) {
-		Shapes changedShape;
-		if (rot > 0) {
-			changedShape = currentShape.rotateCW();
-		} else {
-			changedShape = currentShape.rotateCCW();
-		}
-		for (int i = 0; i < 4; ++i) {
-			int x = currX + changedShape.getX(i);
-			int y = currY + changedShape.getY(i);
-			// check if it crosses margin or overlaps with existing blocks
-			if (x < 1 || x > 10 || y < 1 || y > 20 || playAreaBlock[x - 1][y - 1] == 1)
-				return false;
-		}
-		return true;
-	}
-
-	public void checkDrop() {
-		for (int i = 0; i < 4; ++i) {
-			int x = currX + currentShape.getX(i);
-			int y = currY + currentShape.getY(i);
-			if (y == 1) {
-				touchBase = true;
-				break;
-			} else if (playAreaBlock[x - 1][y - 2] == 1) {
-				if (y >= 19) {
-					System.exit(0);
-				}
-				touchBase = true;
-				break;
-			}
-		}
-	}
-
-	private void removeFullLines() {
-		int numFullLines = 0;
-		for (int i = playAreaBlock[0].length - 1; i >= 0; i--) {
-			boolean lineIsFull = true;
-			for (int j = 0; j < playAreaBlock.length; j++) {
-				if (playAreaBlock[j][i] == 0) {
-					lineIsFull = false;
-				}
-			}
-			if (lineIsFull) {
-				numFullLines++;
-				for (int j = 0; j < playAreaBlock.length; j++) {
-					for (int k = i; k < playAreaBlock[0].length - 1; k++) {
-						// board[(k * BoardWidth) + j] = shapeAt(j, k + 1);
-						playAreaBlock[j][k] = playAreaBlock[j][k + 1];
-						playAreaColor[j][k] = playAreaColor[j][k + 1];
-					}
+		Shapes currShape = Tetris.getInstance().getCurrTetrisShape();
+		currShapeBlocks.clear();
+		if (currShape != null) {
+			int[][] currBlocks = currShape.getBlockPos();
+			for (int i = 0; i < currBlocks.length; i++) {
+				int x = currBlocks[i][0];
+				int y = currBlocks[i][1];
+				if (Tetris.getInstance().inMainArea(x, y)) {
+					Component block = new Component(mainArea.relativeX((float) x * blockSize),
+							mainArea.relativeY((float) y * blockSize), blockSize, blockSize);
+					block.fillColor = currShape.color;
+					currShapeBlocks.add(block);
+					mainArea.addSubComponent(block);
 				}
 			}
 		}
-		if (numFullLines > 0) {
-			lines += numFullLines;
-			linesCurr += numFullLines;
-			score = score + (level * M);
-			if (linesCurr >= N) {
-				level += 1;
-				SPEED = (int) (SPEED * (1 + (level * S)));
+
+		Color[][] mainAreaColor = Tetris.getInstance().getMainAreaColor();
+		for (int x = 0; x < mainAreaColor.length; x++) {
+			for (int y = 0; y < mainAreaColor[x].length; y++) {
+				if (mainAreaColor[x][y] != null) {
+					Component block = new Component(mainArea.relativeX((float) x * blockSize),
+							mainArea.relativeY((float) y * blockSize), blockSize, blockSize);
+					block.fillColor = mainAreaColor[x][y];
+					mainArea.addSubComponent(block);
+				}
 			}
 		}
+
+		pauseLabel.text = "PAUSE";
+		pauseLabel.textColor = Color.blue;
+		pauseLabel.borderColor = Color.blue;
+		pauseLabel.setCenter(mainArea.centerX(), mainArea.centerY());
+		FontMetrics metrics = g.getFontMetrics(g.getFont());
+		pauseLabel.w = metrics.stringWidth(pauseLabel.text) + margin * 2;
+		pauseLabel.h = metrics.getHeight() + margin * 2;
+		
+		mainArea.addSubComponent(pauseLabel);
+
+		if (Tetris.getInstance().isGameOver) {
+			System.exit(0);
+		}
+
+		drawComponent(g, mainArea);
+	}
+
+	void drawNextShapeArea(Graphics g) {
+
+		nextShapeArea.x = margin + mainArea.x + mainArea.w;
+		nextShapeArea.y = mainArea.y;
+		nextShapeArea.w = 5 * blockSize;
+		nextShapeArea.h = 4 * blockSize;
+		nextShapeArea.subComponents.clear();
+
+		Component blocks = new Component(0, 0, 4 * blockSize, 2 * blockSize);
+		blocks.borderColor = null;
+		blocks.setCenter(nextShapeArea.centerX(), nextShapeArea.centerY());
+
+		Shapes nextShape = Tetris.getInstance().getNextTetrisShape();
+		if (nextShape != null) {
+			int[][] nextShapePos = Shapes.getNextPos(new int[] { 0, 1 }, nextShape.getPos());
+			Color color = nextShape.color;
+			for (int i = 0; i < nextShapePos.length; i++) {
+				int x = nextShapePos[i][0], y = nextShapePos[i][1] - 1;
+				Component block = new Component(blocks.relativeX((float) x * blockSize),
+						blocks.relativeY((float) y * blockSize), blockSize, blockSize);
+				block.fillColor = color;
+				blocks.addSubComponent(block);
+			}
+			nextShapeArea.addSubComponent(blocks);
+		}
+
+		drawComponent(g, nextShapeArea);
+	}
+
+	void drawScoreArea(Graphics g) {
+		int fontHeight = g.getFontMetrics(g.getFont()).getHeight();
+		int X = iX(nextShapeArea.x);
+		int Y = iY(nextShapeArea.y + nextShapeArea.h);
+		Y += fontHeight + margin;
+		g.drawString(String.format("Level: %d", Tetris.LEVEL), X, Y);
+		Y += fontHeight + margin;
+		g.drawString(String.format("Lines: %d", Tetris.LINE), X, Y);
+		Y += fontHeight + margin;
+		g.drawString(String.format("Score: %d", Tetris.SCORE), X, Y);
+	}
+
+	void drawButtons(Graphics g) {
+
+		quitButton.text = "QUIT";
+		quitButton.textColor = Color.black;
+		quitButton.borderColor = Color.black;
+		quitButton.x = nextShapeArea.x;
+		quitButton.y = rHeight - margin - quitButton.h;
+		FontMetrics qmetrics = g.getFontMetrics(g.getFont());
+		quitButton.w = qmetrics.stringWidth(quitButton.text) + margin * 2;
+		quitButton.h = qmetrics.getHeight() + margin * 2;
+
+		drawComponent(g, quitButton);
+
+		setupButton.text = "SETUP";
+		setupButton.textColor = Color.black;
+		setupButton.borderColor = Color.black;
+		setupButton.x = nextShapeArea.x;
+		setupButton.y = quitButton.y - margin - setupButton.h;
+		FontMetrics smetrics = g.getFontMetrics(g.getFont());
+		setupButton.w = smetrics.stringWidth(setupButton.text) + margin * 2;
+		setupButton.h = smetrics.getHeight() + margin * 2;
+
+		drawComponent(g, setupButton);
+
 	}
 
 	public void paint(Graphics g) {
-		initgr(g);
-		fillNextArea(g);
-		fillPlayArea(g);
-		fillWithShapes(g);
-		removeFullLines();
-		checkDrop();
-		if (touchBase) {
-			addShape();
-		}
-		if (hover) {
-			g.setColor(Color.blue);
-			g.drawRect(iX(-125 - 60), iY(25), Math.round(120 / pixelSize), Math.round(50 / pixelSize));
-			g.drawString("PAUSE", iX(-160), iY(-5));
-			repaint();
-		}
+		initgr();
+		g.setFont(textFont);
+		drawMainArea(g);
+		drawNextShapeArea(g);
+		drawScoreArea(g);
+		drawButtons(g);
 	}
-
 }

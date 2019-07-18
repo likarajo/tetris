@@ -19,9 +19,7 @@ public class Tetris extends Frame {
 			}
 		});
 		setSize(600, 600);
-		TetrisCanvas game = new TetrisCanvas();
-		add("Center", game);
-		game.start();
+		add("Center", new Setup());
 		setVisible(true);
 	}
 }

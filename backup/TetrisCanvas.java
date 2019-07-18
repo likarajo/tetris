@@ -2,33 +2,39 @@ package tetris;
 
 import java.awt.*;
 import java.awt.event.*;
+
 import javax.swing.*;
 
 public class TetrisCanvas extends Canvas implements ActionListener {
 
 	private static final long serialVersionUID = 1L; // Since serializabile
-	
-	// Speed of drop in milliseconds
-	private static final int SPEED = 100;
 
-	// Starting position of shapes in play area
-	private static final int INITX = 5;
-	private static final int INITY = 20;
+	// Speed of drop in Milliseconds
+	private static int SPEED = 1000;
 
 	Shapes currentShape;
 	Shapes nextShape;
 
-	int[][] playAreaBlock = new int[10][20];
-	Color[][] playAreaColor = new Color[10][20];
+	// Play Area Size
+	static int W = Setup.W;
+	static int H = Setup.H;
+
+	int[][] playAreaBlock = new int[W][H];
+	Color[][] playAreaColor = new Color[W][H];
 
 	int centerX, centerY;
 	float pixelSize, rWidth = 600, rHeight = 600;
+
+	// Starting position of shapes in play area
+	private static final int INITX = W / 2;
+	private static final int INITY = H;
 
 	// current position of shapes in play area
 	int currX, currY;
 
 	int level = 1;
 	int lines = 0;
+	int linesCurr = 0;
 	int score = 0;
 
 	boolean hover = false;
@@ -37,6 +43,17 @@ public class TetrisCanvas extends Canvas implements ActionListener {
 
 	Timer timer = null;
 	GameThread thread;
+
+	int numLinesRemoved = 0;
+
+	// scoring factor (range: 1-10)
+	int M = Setup.M;
+
+	// number of rows required for each Level of difficulty (range: 20-50)
+	int N = Setup.N;
+
+	// speed factor (range: 0.1-1.0)
+	double S = Setup.S;
 
 	// ************** Constructor ****************
 	TetrisCanvas() {
@@ -105,6 +122,7 @@ public class TetrisCanvas extends Canvas implements ActionListener {
 
 		currX = INITX;
 		currY = INITY;
+
 		thread = new GameThread(timer);
 		thread.timer = new Timer(SPEED, this);
 		thread.start();
@@ -216,8 +234,8 @@ public class TetrisCanvas extends Canvas implements ActionListener {
 	}
 
 	public void fillPlayArea(Graphics g) {
-		for (int x = 0; x < 10; x++) {
-			for (int y = 0; y < 20; y++) {
+		for (int x = 0; x < W; x++) {
+			for (int y = 0; y < H; y++) {
 				if (playAreaBlock[x][y] == 1)
 					drawPlayArea(g, x + 1, y + 1, playAreaColor[x][y]);
 			}
@@ -251,7 +269,7 @@ public class TetrisCanvas extends Canvas implements ActionListener {
 			int x = currX + changedShape.getX(i);
 			int y = currY + changedShape.getY(i);
 			// check if it crosses margin or overlaps with existing blocks
-			if (x < 1 || x > 10 || y < 1 || y > 20 || playAreaBlock[x - 1][y - 1] == 1)
+			if (x < 1 || x > W || y < 1 || y > H || playAreaBlock[x - 1][y - 1] == 1)
 				return false;
 		}
 		return true;
@@ -265,7 +283,7 @@ public class TetrisCanvas extends Canvas implements ActionListener {
 				touchBase = true;
 				break;
 			} else if (playAreaBlock[x - 1][y - 2] == 1) {
-				if (y >= 19) {
+				if (y >= H - 1) {
 					System.exit(0);
 				}
 				touchBase = true;
@@ -275,16 +293,16 @@ public class TetrisCanvas extends Canvas implements ActionListener {
 	}
 
 	private void removeFullLines() {
-		int fullLines = 0;
+		int numFullLines = 0;
 		for (int i = playAreaBlock[0].length - 1; i >= 0; i--) {
-			boolean isLineFull = true;
+			boolean lineIsFull = true;
 			for (int j = 0; j < playAreaBlock.length; j++) {
 				if (playAreaBlock[j][i] == 0) {
-					isLineFull = false;
+					lineIsFull = false;
 				}
 			}
-			if (isLineFull) {
-				fullLines++;
+			if (lineIsFull) {
+				numFullLines++;
 				for (int j = 0; j < playAreaBlock.length; j++) {
 					for (int k = i; k < playAreaBlock[0].length - 1; k++) {
 						playAreaBlock[j][k] = playAreaBlock[j][k + 1];
@@ -293,8 +311,14 @@ public class TetrisCanvas extends Canvas implements ActionListener {
 				}
 			}
 		}
-		if (fullLines > 0) {
-			lines += fullLines;
+		if (numFullLines > 0) {
+			lines += numFullLines;
+			linesCurr += numFullLines;
+			score = score + (level * M);
+			if (linesCurr >= N) {
+				level += 1;
+				SPEED = (int) (SPEED * (1 + (level * S)));
+			}
 		}
 	}
 
